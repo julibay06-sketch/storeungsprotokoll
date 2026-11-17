@@ -105,6 +105,7 @@
     async function melden() {
       const anlage = document.getElementById("anlage").value.trim();
       const text = document.getElementById("text").value.trim();
+      const prioritaet = document.getElementById("prioritaet").value;
 
       if (anlage === "" || text === "") {
         alert("Bitte Anlagenname und Störungstext eingeben.");
@@ -115,7 +116,7 @@
         const antwort = await fetch(TABELLE, {
           method: "POST",
           headers: { ...KOPF, "Prefer": "return=minimal" },
-          body: JSON.stringify({ anlage: anlage, text: text })
+          body: JSON.stringify({ anlage: anlage, text: text, prioritaet: prioritaet })
         });
         if (!antwort.ok) {
           throw new Error("Speichern fehlgeschlagen (Status " + antwort.status + ")");
