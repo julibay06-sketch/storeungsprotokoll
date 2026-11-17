@@ -23,6 +23,11 @@
 
   <input id="anlage" type="text" placeholder="Anlagenname, z. B. WEA 3 Regensburg">
   <input id="text" type="text" placeholder="Störungstext, z. B. Getriebeöltemperatur zu hoch">
+    <select id="prioritaet">
+    <option value="hoch">Priorität hoch</option>
+    <option value="mittel" selected>Priorität mittel</option>
+    <option value="niedrig">Priorität niedrig</option>
+  </select>
   <select>
 
   <button onclick="melden()">Störung melden</button>
