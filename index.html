@@ -16,26 +16,40 @@
     li { border-bottom: 1px solid #ddd; padding: 8px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     li button { font-size: 13px; padding: 4px 10px; margin: 0; }
     .leer { color: #888; }
+    .kopfzeile { text-align: right; margin-bottom: 10px; }
   </style>
 </head>
 <body>
   <h1>Störungsprotokoll</h1>
 
-  <input id="anlage" type="text" placeholder="Anlagenname, z. B. WEA 3 Regensburg">
-  <input id="text" type="text" placeholder="Störungstext, z. B. Getriebeöltemperatur zu hoch">
-  <select id="prioritaet">
-    <option value="hoch">Priorität hoch</option>
-    <option value="mittel" selected>Priorität mittel</option>
-    <option value="niedrig">Priorität niedrig</option>
-  </select>
+  <!-- Bereich 1: Anmeldung (sichtbar, solange niemand angemeldet ist) -->
+  <div id="login">
+    <input id="email" type="email" placeholder="E-Mail">
+    <input id="passwort" type="password" placeholder="Passwort" onkeydown="if (event.key === 'Enter') anmelden()">
+    <button onclick="anmelden()">Anmelden</button>
+    <p class="status" id="loginstatus"></p>
+  </div>
 
-  <button onclick="melden()">Störung melden</button>
-  <button onclick="alleLoeschen()">Alle löschen</button>
+  <!-- Bereich 2: das eigentliche Tool (nur nach erfolgreicher Anmeldung sichtbar) -->
+  <div id="app" style="display:none">
+    <div class="kopfzeile"><button onclick="abmelden()">Abmelden</button></div>
 
-  <p class="zaehler">Gespeicherte Störungen: <strong id="zaehler">0</strong></p>
-  <p class="status" id="status"></p>
+    <input id="anlage" type="text" placeholder="Anlagenname, z. B. WEA 3 Regensburg">
+    <input id="text" type="text" placeholder="Störungstext, z. B. Getriebeöltemperatur zu hoch">
+    <select id="prioritaet">
+      <option value="hoch">Priorität hoch</option>
+      <option value="mittel" selected>Priorität mittel</option>
+      <option value="niedrig">Priorität niedrig</option>
+    </select>
 
-  <ul id="liste"></ul>
+    <button onclick="melden()">Störung melden</button>
+    <button onclick="alleLoeschen()">Alle löschen</button>
+
+    <p class="zaehler">Gespeicherte Störungen: <strong id="zaehler">0</strong></p>
+    <p class="status" id="status"></p>
+
+    <ul id="liste"></ul>
+  </div>
 
   <script>
     // Verbindungsdaten zu Supabase (der publishable Key darf öffentlich im Code stehen)
@@ -43,11 +57,17 @@
     const SUPABASE_KEY = "sb_publishable_Eux3_BsGMaAZmJrY2kfo0A_jnEKGF5e";
     const TABELLE = SUPABASE_URL + "/rest/v1/stoerungen";
 
-    // Gemeinsame Kopfzeilen für jede Anfrage
-    const KOPF = {
-      "apikey": SUPABASE_KEY,
-      "Content-Type": "application/json"
-    };
+    // Das Login-Token (wie ein Zugangsausweis). Es bleibt, bis der Tab geschlossen wird.
+    let token = sessionStorage.getItem("token");
+
+    // Kopfzeilen für jede Anfrage: mit Token, wenn jemand angemeldet ist
+    function kopf() {
+      const k = { "apikey": SUPABASE_KEY, "Content-Type": "application/json" };
+      if (token) {
+        k["Authorization"] = "Bearer " + token;
+      }
+      return k;
+    }
 
     function meldung(text, istFehler) {
       const s = document.getElementById("status");
@@ -55,16 +75,74 @@
       s.className = istFehler ? "status fehler" : "status";
     }
 
-    // Alle Einträge vom Server holen (neueste zuerst)
-    async function laden() {
-      const antwort = await fetch(TABELLE + "?select=*&order=created_at.desc", { headers: KOPF });
-      if (!antwort.ok) {
-        throw new Error("Laden fehlgeschlagen (Status " + antwort.status + ")");
+    // Zwischen Anmeldeseite und Tool umschalten
+    function ansichtZeigen() {
+      const angemeldet = token !== null;
+      document.getElementById("login").style.display = angemeldet ? "none" : "block";
+      document.getElementById("app").style.display = angemeldet ? "block" : "none";
+      if (angemeldet) {
+        anzeigen();
       }
+    }
+
+    async function anmelden() {
+      const email = document.getElementById("email").value.trim();
+      const passwort = document.getElementById("passwort").value;
+      const status = document.getElementById("loginstatus");
+
+      if (email === "" || passwort === "") {
+        status.textContent = "Bitte E-Mail und Passwort eingeben.";
+        status.className = "status fehler";
+        return;
+      }
+
+      try {
+        const antwort = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {
+          method: "POST",
+          headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, password: passwort })
+        });
+        if (!antwort.ok) {
+          throw new Error("E-Mail oder Passwort falsch.");
+        }
+        const daten = await antwort.json();
+        token = daten.access_token;
+        sessionStorage.setItem("token", token);
+        document.getElementById("passwort").value = "";
+        status.textContent = "";
+        ansichtZeigen();
+      } catch (fehler) {
+        status.textContent = fehler.message;
+        status.className = "status fehler";
+      }
+    }
+
+    function abmelden(hinweis) {
+      token = null;
+      sessionStorage.removeItem("token");
+      const status = document.getElementById("loginstatus");
+      status.textContent = hinweis || "";
+      status.className = "status";
+      ansichtZeigen();
+    }
+
+    // Prüft jede Serverantwort: Bei 401 ist die Sitzung abgelaufen
+    function pruefen(antwort, fehlertext) {
+      if (antwort.status === 401) {
+        abmelden("Sitzung abgelaufen, bitte neu anmelden.");
+        throw new Error("Nicht angemeldet");
+      }
+      if (!antwort.ok) {
+        throw new Error(fehlertext + " (Status " + antwort.status + ")");
+      }
+    }
+
+    async function laden() {
+      const antwort = await fetch(TABELLE + "?select=*&order=created_at.desc", { headers: kopf() });
+      pruefen(antwort, "Laden fehlgeschlagen");
       return await antwort.json();
     }
 
-    // Liste auf der Seite neu aufbauen
     async function anzeigen() {
       try {
         meldung("Lade Daten ...", false);
@@ -97,7 +175,9 @@
         }
         meldung("", false);
       } catch (fehler) {
-        meldung("Fehler: " + fehler.message, true);
+        if (token) {
+          meldung("Fehler: " + fehler.message, true);
+        }
       }
     }
 
@@ -114,28 +194,28 @@
       try {
         const antwort = await fetch(TABELLE, {
           method: "POST",
-          headers: { ...KOPF, "Prefer": "return=minimal" },
+          headers: { ...kopf(), "Prefer": "return=minimal" },
           body: JSON.stringify({ anlage: anlage, text: text, prioritaet: prioritaet })
         });
-        if (!antwort.ok) {
-          throw new Error("Speichern fehlgeschlagen (Status " + antwort.status + ")");
-        }
+        pruefen(antwort, "Speichern fehlgeschlagen");
         document.getElementById("text").value = "";
         await anzeigen();
       } catch (fehler) {
-        meldung("Fehler: " + fehler.message, true);
+        if (token) {
+          meldung("Fehler: " + fehler.message, true);
+        }
       }
     }
 
     async function einzelnLoeschen(id) {
       try {
-        const antwort = await fetch(TABELLE + "?id=eq." + id, { method: "DELETE", headers: KOPF });
-        if (!antwort.ok) {
-          throw new Error("Löschen fehlgeschlagen (Status " + antwort.status + ")");
-        }
+        const antwort = await fetch(TABELLE + "?id=eq." + id, { method: "DELETE", headers: kopf() });
+        pruefen(antwort, "Löschen fehlgeschlagen");
         await anzeigen();
       } catch (fehler) {
-        meldung("Fehler: " + fehler.message, true);
+        if (token) {
+          meldung("Fehler: " + fehler.message, true);
+        }
       }
     }
 
@@ -144,18 +224,18 @@
         return;
       }
       try {
-        const antwort = await fetch(TABELLE + "?id=gt.0", { method: "DELETE", headers: KOPF });
-        if (!antwort.ok) {
-          throw new Error("Löschen fehlgeschlagen (Status " + antwort.status + ")");
-        }
+        const antwort = await fetch(TABELLE + "?id=gt.0", { method: "DELETE", headers: kopf() });
+        pruefen(antwort, "Löschen fehlgeschlagen");
         await anzeigen();
       } catch (fehler) {
-        meldung("Fehler: " + fehler.message, true);
+        if (token) {
+          meldung("Fehler: " + fehler.message, true);
+        }
       }
     }
 
-    // Beim Öffnen der Seite die Daten vom Server holen
-    anzeigen();
+    // Beim Öffnen der Seite: Anmeldeseite oder Tool zeigen, je nach Token
+    ansichtZeigen();
   </script>
 </body>
 </html>
