@@ -167,7 +167,7 @@
 
         if (eintraege.length === 0) {
           const leer = document.createElement("li");
-                    li.className = e.prioritaet;
+                    
           leer.className = "leer";
           leer.textContent = "Noch keine Störungen erfasst.";
           liste.appendChild(leer);
@@ -175,6 +175,7 @@
 
         for (const e of eintraege) {
           const li = document.createElement("li");
+          li.className = e.prioritaet;
 
           const info = document.createElement("span");
           const zeit = new Date(e.created_at).toLocaleString("de-DE");
