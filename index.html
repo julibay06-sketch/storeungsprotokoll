@@ -48,6 +48,12 @@
     <p class="zaehler">Gespeicherte Störungen: <strong id="zaehler">0</strong></p>
     <p class="status" id="status"></p>
 
+        <select id="filter" onchange="anzeigen()">
+      <option value="alle">Alle Prioritäten</option>
+      <option value="hoch">Nur hoch</option>
+      <option value="mittel">Nur mittel</option>
+      <option value="niedrig">Nur niedrig</option>
+    </select>
     <ul id="liste"></ul>
   </div>
 
@@ -146,7 +152,12 @@
     async function anzeigen() {
       try {
         meldung("Lade Daten ...", false);
-        const eintraege = await laden();
+                const alle = await laden();
+        const filter = document.getElementById("filter").value;
+        let eintraege = alle;
+        if (filter !== "alle") {
+          eintraege = alle.filter(function (e) { return e.prioritaet === filter; });
+        }
         const liste = document.getElementById("liste");
         liste.innerHTML = "";
         document.getElementById("zaehler").textContent = eintraege.length;
