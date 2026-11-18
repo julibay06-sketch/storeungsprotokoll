@@ -16,6 +16,9 @@
     li { border-bottom: 1px solid #ddd; padding: 8px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     li button { font-size: 13px; padding: 4px 10px; margin: 0; }
     .leer { color: #888; }
+        .hoch { color: #b00020; font-weight: bold; }
+    .mittel { color: #b26a00; }
+    .niedrig { color: #2e7d32; }
     .kopfzeile { text-align: right; margin-bottom: 10px; }
   </style>
 </head>
@@ -164,6 +167,7 @@
 
         if (eintraege.length === 0) {
           const leer = document.createElement("li");
+                    li.className = e.prioritaet;
           leer.className = "leer";
           leer.textContent = "Noch keine Störungen erfasst.";
           liste.appendChild(leer);
