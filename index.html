@@ -162,6 +162,12 @@
         if (filter !== "alle") {
           eintraege = alle.filter(function (e) { return e.prioritaet === filter; });
         }
+                const suchtext = document.getElementById("suche").value.trim().toLowerCase();
+        if (suchtext !== "") {
+          eintraege = eintraege.filter(function (e) {
+            return e.anlage.toLowerCase().includes(suchtext);
+          });
+        }
         const liste = document.getElementById("liste");
         liste.innerHTML = "";
         document.getElementById("zaehler").textContent = eintraege.length;
