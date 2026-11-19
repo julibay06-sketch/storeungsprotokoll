@@ -21,6 +21,51 @@
   <ul id="liste"></ul>
 
   <script>
+    // Name, unter dem die Liste im Browser abgelegt wird
+    const SCHLUESSEL = "checkliste";
+
+    // Alle Punkte; jeder Punkt hat einen Text und einen Haken-Status
+    let punkte = laden();
+
+    // Liste aus dem Browser-Speicher holen
+    function laden() {
+      try {
+        const gespeichert = localStorage.getItem(SCHLUESSEL);
+        if (gespeichert === null) {
+          return [];
+        }
+        return JSON.parse(gespeichert);
+      } catch (fehler) {
+        return [];
+      }
+    }
+
+    // Liste im Browser-Speicher ablegen
+    function speichern() {
+      localStorage.setItem(SCHLUESSEL, JSON.stringify(punkte));
+    }
+
+    // Liste auf der Seite komplett neu aufbauen
+    function anzeigen() {
+      const liste = document.getElementById("liste");
+      liste.innerHTML = "";
+
+      for (let i = 0; i < punkte.length; i++) {
+        const p = punkte[i];
+        const li = document.createElement("li");
+        li.textContent = p.text;
+        if (p.erledigt) {
+          li.className = "erledigt";
+        }
+        li.onclick = function () {
+          punkte[i].erledigt = !punkte[i].erledigt;
+          speichern();
+          anzeigen();
+        };
+        liste.appendChild(li);
+      }
+    }
+
     function hinzufuegen() {
       const text = document.getElementById("punkt").value.trim();
 
@@ -28,15 +73,15 @@
         return;
       }
 
-      const li = document.createElement("li");
-      li.textContent = text;
-      li.onclick = function () {
-        li.classList.toggle("erledigt");
-      };
-      document.getElementById("liste").appendChild(li);
+      punkte.push({ text: text, erledigt: false });
+      speichern();
+      anzeigen();
 
       document.getElementById("punkt").value = "";
     }
+
+    // Beim Öffnen der Seite gespeicherte Punkte anzeigen
+    anzeigen();
   </script>
 </body>
 </html>
