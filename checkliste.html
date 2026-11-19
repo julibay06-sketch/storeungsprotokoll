@@ -21,7 +21,17 @@
 
   <script>
     function hinzufuegen() {
-      // HIER SCHREIBST DU DEINEN CODE
+      const text = document.getElementById("punkt").value.trim();
+
+      if (text === "") {
+        return;
+      }
+
+      const li = document.createElement("li");
+      li.textContent = text;
+      document.getElementById("liste").appendChild(li);
+
+      document.getElementById("punkt").value = "";
     }
   </script>
 </body>
